@@ -21,14 +21,11 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e841830c-bafd-4067-9f6f-6bd08f1c87ec"
+				"spark.autotune.trackingId": "280af6c3-5e92-44c8-83a6-5b08fb24d447"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"synapse_widget": {
-				"version": "0.1"
-			},
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
@@ -44,14 +41,13 @@
 				"endpoint": "https://azsynapsewksash.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/azsparkash",
 				"auth": {
 					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net",
-					"authHeader": null
+					"authResource": "https://dev.azuresynapse.net"
 				},
 				"sparkVersion": "3.2",
 				"nodeCount": 10,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -64,8 +60,7 @@
 					"The notebook ingests, visualizes, prepares and then trains a model based on an Open Dataset that tracks NYC Yellow Taxi trips and various attributes around them.\n",
 					"The goal is to predict for a given trip whether there will be a tip or not.\n",
 					""
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +81,6 @@
 					"from pyspark.mllib.evaluation import BinaryClassificationMetrics\n",
 					"from pyspark.ml.evaluation import BinaryClassificationEvaluator"
 				],
-				"attachments": null,
 				"execution_count": 1
 			},
 			{
@@ -95,8 +89,7 @@
 					"## Ingest Data?? \n",
 					"\n",
 					"Get a sample data of nyc yellow taxi to make it faster/easier to evaluate different approaches to prep for the modelling phase later in the notebook."
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -107,23 +100,57 @@
 					"from datetime import datetime\n",
 					"from dateutil import parser\n",
 					"\n",
-					"end_date = parser.parse('2018-05-08 00:00:00')\n",
+					"end_date = parser.parse('2020-05-08 00:00:00')\n",
 					"start_date = parser.parse('2018-05-01 00:00:00')\n",
 					"\n",
 					"nyc_tlc = NycTlcYellow(start_date=start_date, end_date=end_date)\n",
 					"nyc_tlc_df = nyc_tlc.to_spark_dataframe()"
 				],
-				"attachments": null,
 				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"nyc_tlc_df.count()"
+				],
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"#To make development easier, faster and less expensive downsample for now\n",
-					"sampled_taxi_df = nyc_tlc_df.sample(True, 0.001, seed=1234)"
+					"sampled_taxi_df = nyc_tlc_df.sample(True, 0.02, seed=1234)"
 				],
-				"attachments": null,
-				"execution_count": 3
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sampled_taxi_df.count()"
+				],
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -131,8 +158,7 @@
 					"## Exploratory Data Analysis\n",
 					"\n",
 					"Look at the data and evaluate its suitability for use in a model, do this via some basic charts focussed on tip values and relationships."
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -165,8 +191,7 @@
 					"plt.suptitle('')\n",
 					"plt.show()"
 				],
-				"attachments": null,
-				"execution_count": 4
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -177,8 +202,7 @@
 					"\n",
 					"Finally there is a need to create some new (derived) variables that will work better with the model.\n",
 					""
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -199,8 +223,7 @@
 					"                                & (sampled_taxi_df.paymentType.isin({\"1\", \"2\"}))\n",
 					"                                )"
 				],
-				"attachments": null,
-				"execution_count": 5
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -211,8 +234,7 @@
 					"\n",
 					"Also create some more features based on new columns from the first round.\n",
 					""
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -227,8 +249,7 @@
 					"                                              )\\\n",
 					"                                       .filter((taxi_df.tripTimeSecs >= 30) & (taxi_df.tripTimeSecs <= 7200))"
 				],
-				"attachments": null,
-				"execution_count": 6
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -241,8 +262,7 @@
 					"\n",
 					"This approach requires the encoder to \"learn\"/fit a model over the data in the Spark instance and then transform based on what was learnt.\n",
 					""
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -256,8 +276,49 @@
 					"# Create a new dataframe that has had the encodings applied\n",
 					"encoded_final_df = Pipeline(stages=[sI1, en1, sI2, en2]).fit(taxi_featurised_df).transform(taxi_featurised_df)"
 				],
-				"attachments": null,
-				"execution_count": 7
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"encoded_final_df.count()"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#encoded_final_df.write.csv()\r\n",
+					"output_container_path = \"abfss://nyctaxi@azrawdatalakeash.dfs.core.windows.net\"\r\n",
+					"full_output_name = \"{}/{}/{}\".format(output_container_path,\"nyctaxicsv\",\"nyctaxi.csv\")\r\n",
+					"\r\n",
+					"#encoded_final_df.coalesce(1).write.mode(\"overwrite\").option(\"header\", \"true\").csv(full_output_name)\r\n",
+					"taxi_featurised_df.repartition(1).write.format(\"csv\").option(\"header\", \"true\").save(full_output_name)"
+				],
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -265,8 +326,7 @@
 					"## Generation of Testing and Training Data Sets\n",
 					"Simple split, 70% for training and 30% for testing the model. Playing with this ratio may result in different models.\n",
 					""
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -279,8 +339,7 @@
 					"# Split the dataframe into test and training dataframes\n",
 					"train_data_df, test_data_df = encoded_final_df.randomSplit([trainingFraction, testingFraction], seed=seed)"
 				],
-				"attachments": null,
-				"execution_count": 8
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -288,8 +347,7 @@
 					"## Train the Model\n",
 					"\n",
 					"Train the Logistic Regression model and then evaluate it using Area under ROC as the metric."
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -315,8 +373,7 @@
 					"metrics = BinaryClassificationMetrics(predictionAndLabels)\n",
 					"print(\"Area under ROC = %s\" % metrics.areaUnderROC)"
 				],
-				"attachments": null,
-				"execution_count": 9
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -325,8 +382,7 @@
 					"\n",
 					"Plot the actual curve to develop a better understanding of the model.\n",
 					""
-				],
-				"attachments": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -341,8 +397,25 @@
 					"plt.ylabel('True Positive Rate')\n",
 					"plt.show()"
 				],
-				"attachments": null,
-				"execution_count": 10
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
